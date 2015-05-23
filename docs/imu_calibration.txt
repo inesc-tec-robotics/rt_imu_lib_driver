@@ -1,0 +1,129 @@
+####################################################################################################
+Run calibration RTIMULibCal in: ~/RTIMULib/RTEllipsoidFit
+Copy RTIMULib.ini to ~/catkin_ws/src/tr_imu_lib_driver/scripts
+
+mv ~/catkin_ws/src/rt_imu_lib_driver/scripts/RTIMULib.ini ~/catkin_ws/src/rt_imu_lib_driver/scripts/RTIMULib_old.ini
+cp ~/RTIMULib/RTEllipsoidFit/RTIMULib.ini ~/catkin_ws/src/rt_imu_lib_driver/scripts/RTIMULib.ini
+
+####################################################################################################
+Example of output of RTIMULibCal
+
+
+RTIMULibCal - using RTIMULib.ini
+Settings file RTIMULib.ini loaded
+Using fusion algorithm RTQF
+Using min/max compass calibration
+Using ellipsoid compass calibration
+Using accel calibration
+MPU9150 init complete
+
+Options are: 
+
+  m - calibrate magnetometer with min/max
+  e - calibrate magnetometer with ellipsoid (do min/max first)
+  a - calibrate accelerometers
+  x - exit
+
+Enter option: m
+
+Magnetometer min/max calibration
+--------------------------------
+Waggle the IMU chip around, ensuring that all six axes
+(+x, -x, +y, -y and +z, -z) go through their extrema.
+When all extrema have been achieved, enter 's' to save, 'r' to reset
+or 'x' to abort and discard the data.
+
+Press any key to start... 
+
+Min x: 1000.00  min y: 1000.00  min z: 1000.00
+Max x: -1000.00  max y: -1000.00  max z: -1000.00
+
+Min x: -82.43  min y: -93.48  min z: -83.82
+Max x:  74.70  max y:  63.46  max z:  74.12
+s
+Saving min/max data.
+
+
+Options are: 
+
+  m - calibrate magnetometer with min/max
+  e - calibrate magnetometer with ellipsoid (do min/max first)
+  a - calibrate accelerometers
+  x - exit
+
+Enter option: e
+
+Magnetometer ellipsoid calibration
+
+
+----------------------------------
+Move the magnetometer around in as many poses as possible.
+The counts for each of the 8 pose quadrants will be displayed.
+When enough data (200 samples per octant) has been collected,
+ellipsoid processing will begin.
+Enter 'x' at any time to abort and discard the data.
+
+Press any key to start...
+
+
+---: 195  +--: 1414  -+-: 244  ++-: 1477
+--+: 1223  +-+: 5109  -++: 1454  +++: 5036
+
+
+Processing ellipsoid fit data...
+GNU Octave, version 3.6.2
+Copyright (C) 2012 John W. Eaton and others.
+This is free software; see the source code for copying conditions.
+There is ABSOLUTELY NO WARRANTY; not even for MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  For details, type `warranty'.
+
+Octave was configured for "arm-unknown-linux-gnueabihf".
+
+Additional information about Octave is available at http://www.octave.org.
+
+Please contribute if you find this software useful.
+For more information, visit http://www.octave.org/help-wanted.html
+
+Read http://www.octave.org/bugs.html to learn how to submit bug reports.
+
+For information about changes from previous versions, type `news'.
+
+warning: X11 DISPLAY environment variable not set
+Mat size = 3
+Mat size = 16157
+
+Ellipsoid fit completed - saving data to file.
+Options are: 
+
+  m - calibrate magnetometer with min/max
+  e - calibrate magnetometer with ellipsoid (do min/max first)
+  a - calibrate accelerometers
+  x - exit
+
+Enter option: a
+
+Accelerometer Calibration
+-------------------------
+The code normally ignores readings until an axis has been enabled.
+The idea is to orient the IMU near the current extrema (+x, -x, +y, -y, +z, -z)
+and then enable the axis, moving the IMU very gently around to find the
+extreme value. Now disable the axis again so that the IMU can be inverted.
+When the IMU has been inverted, enable the axis again and find the extreme
+point. Disable the axis again and press the space bar to move to the next
+axis and repeat. The software will display the current axis and enable state.
+Available options are:
+  e - enable the current axis.
+  d - disable the current axis.
+  space bar - move to the next axis (x then y then z then x etc.
+  r - reset the current axis (if enabled).
+  s - save the data once all 6 extrema have been collected.
+  x - abort and discard the data.
+
+Press any key to start...
+
+
+Current axis: z - disabled
+Min x:  -1.15  min y:  -3.79  min z:  -3.28
+Max x:   1.16  max y:   3.26  max z:   5.17
+s
+Accelerometer calibration data saved to file.
