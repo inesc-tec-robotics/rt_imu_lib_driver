@@ -6,7 +6,6 @@ import sys
 import os
 import rospkg
 
-from tf import transformations
 from sensor_msgs.msg import Imu
 from sensor_msgs.msg import MagneticField
 from sensor_msgs.msg import FluidPressure
@@ -14,6 +13,7 @@ from sensor_msgs.msg import Temperature
 from sensor_msgs.msg import RelativeHumidity
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import Vector3Stamped
 from std_msgs.msg import Float64
 
 
@@ -32,6 +32,7 @@ def imu_driver():
     settings_folder = rospy.get_param('~settings_folder', rospack.get_path('rt_imu_lib_driver') + '/scripts') # .ini configuration folder
     settings_filename = rospy.get_param('~settings_filename', 'RTIMULib') # .ini configuration file name
     msgs_frame_id = rospy.get_param('~msgs_frame_id', 'imu_link')
+    publish_topic_imu_vector_rpy = rospy.get_param('~publish_topic_imu_vector_rpy', 'imu/vector_rpy') # if empty no message will be published
     publish_topic_imu_pose = rospy.get_param('~publish_topic_imu_pose', 'imu/pose') # if empty no message will be published
     publish_topic_imu_pose_with_covariance = rospy.get_param('~publish_topic_imu_pose_with_covariance', 'imu/pose_with_covariance') # if empty no message will be published
     publish_topic_imu = rospy.get_param('~publish_topic_imu', 'imu/imu') # if empty no message will be published
@@ -53,6 +54,7 @@ def imu_driver():
     ##############################################################################################################
     # published topics
     ##############################################################################################################
+    publisher_vector_rpy = rospy.Publisher(publish_topic_imu_vector_rpy, Vector3Stamped, queue_size=10)
     publisher_pose = rospy.Publisher(publish_topic_imu_pose, PoseStamped, queue_size=10)
     publisher_pose_with_covariance = rospy.Publisher(publish_topic_imu_pose_with_covariance, PoseWithCovarianceStamped, queue_size=10)
     publisher_imu = rospy.Publisher(publish_topic_imu, Imu, queue_size=10)
@@ -94,6 +96,10 @@ def imu_driver():
     ##############################################################################################################
     # constant message fields setup
     ##############################################################################################################
+    if publish_topic_imu_vector_rpy:
+        vector_rpy_msg = Vector3Stamped()
+        vector_rpy_msg.header.frame_id = msgs_frame_id
+    
     if publish_topic_imu_pose:
         pose_msg = PoseStamped()
         pose_msg.header.frame_id = msgs_frame_id
@@ -160,6 +166,8 @@ def imu_driver():
             ##############################################################################################################
             if msg_header_use_trimulib_time:
                 trimulib_time = rospy.Time(imu_data["timestamp"] / 1e6)
+                if publish_topic_imu_vector_rpy:
+                    vector_rpy_msg.header.stamp = trimulib_time
                 if publish_topic_imu_pose:
                     pose_msg.header.stamp = trimulib_time
                 if publish_topic_imu_pose_with_covariance:
@@ -175,6 +183,8 @@ def imu_driver():
                 if publish_topic_humidity:
                     humidity_msg.header.stamp = trimulib_time
             else:
+                if publish_topic_imu_vector_rpy:
+                    vector_rpy_msg.header.stamp = current_time
                 if publish_topic_imu_pose:
                     pose_msg.header.stamp = current_time
                 if publish_topic_imu_pose_with_covariance:
@@ -189,6 +199,17 @@ def imu_driver():
                     temperature_msg.header.stamp = current_time
                 if publish_topic_humidity:
                     humidity_msg.header.stamp = current_time
+
+
+            ##############################################################################################################
+            # vector_rpy msg
+            ##############################################################################################################
+            if publish_topic_imu_vector_rpy:
+                if imu_data["fusionPoseValid"]:
+                    vector_rpy_msg.vector.x = imu_data["fusionPose"][0]
+                    vector_rpy_msg.vector.y = imu_data["fusionPose"][1]
+                    vector_rpy_msg.vector.z = imu_data["fusionPose"][2]
+                    publisher_vector_rpy.publish(vector_rpy_msg)
 
 
             ##############################################################################################################

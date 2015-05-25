@@ -12,7 +12,6 @@ set(${PROJECT_NAME}_CATKIN_COMPONENTS
     sensor_msgs
     geometry_msgs
     std_msgs
-    tf
 )
 
 

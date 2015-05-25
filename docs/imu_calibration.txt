@@ -1,9 +1,12 @@
 ####################################################################################################
 Run calibration tool RTIMULibCal in: ~/RTIMULib/RTEllipsoidFit
-Copy RTIMULib.ini to ~/catkin_ws/src/tr_imu_lib_driver/scripts
 
+Copy RTIMULib.ini to ~/catkin_ws/src/tr_imu_lib_driver/scripts
 mv ~/catkin_ws/src/rt_imu_lib_driver/scripts/RTIMULib.ini ~/catkin_ws/src/rt_imu_lib_driver/scripts/RTIMULib_old.ini
 cp ~/RTIMULib/RTEllipsoidFit/RTIMULib.ini ~/catkin_ws/src/rt_imu_lib_driver/scripts/RTIMULib.ini
+
+or create symbolic link
+ln -s ~/RTIMULib/RTEllipsoidFit/RTIMULib.ini ~/catkin_ws/src/rt_imu_lib_driver/scripts/RTIMULib.ini
 
 
 
