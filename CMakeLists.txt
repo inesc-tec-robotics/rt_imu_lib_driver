@@ -8,8 +8,10 @@ project(rt_imu_lib_driver)
 
 set(${PROJECT_NAME}_CATKIN_COMPONENTS
     rospy
+    rospkg
     sensor_msgs
     geometry_msgs
+    std_msgs
     tf
 )
 
