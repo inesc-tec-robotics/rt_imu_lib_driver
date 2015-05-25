@@ -15,6 +15,7 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import Vector3Stamped
 from std_msgs.msg import Float64
+from tf import transformations
 
 
 
@@ -149,6 +150,8 @@ def imu_driver():
         humidity_msg.header.frame_id = msgs_frame_id
         humidity_msg.variance = humidity_variance
 
+    # North-East-Down to East-North-Up
+    rt_imu_lib_to_ros_coordinate_frames_matrix = transformations.euler_matrix(1.5707, 0.0, 3.1415, 'rzyx')
 
     ##############################################################################################################
     # imu msg publishing
@@ -202,13 +205,21 @@ def imu_driver():
 
 
             ##############################################################################################################
+            # Conversion between NED (North-East-Down) to ROS coordinate frame Front-Left-Up
+            ##############################################################################################################
+            imu_fusion_q_pose_matrix = transformations.quaternion_matrix([imu_data["fusionQPose"][1], imu_data["fusionQPose"][2], imu_data["fusionQPose"][3], imu_data["fusionQPose"][0]])
+            imu_rotation_ros = transformations.concatenate_matrices(rt_imu_lib_to_ros_coordinate_frames_matrix, imu_fusion_q_pose_matrix)
+            imu_quaternion_qx_ros, imu_quaternion_qy_ros, imu_quaternion_qz_ros, imu_quaternion_qw_ros = transformations.quaternion_from_matrix(imu_rotation_ros)
+
+            ##############################################################################################################
             # vector_rpy msg
             ##############################################################################################################
             if publish_topic_imu_vector_rpy:
                 if imu_data["fusionPoseValid"]:
-                    vector_rpy_msg.vector.x = imu_data["fusionPose"][0]
-                    vector_rpy_msg.vector.y = imu_data["fusionPose"][1]
-                    vector_rpy_msg.vector.z = imu_data["fusionPose"][2]
+                    yaw, pitch, roll = transformations.euler_from_matrix(imu_rotation_ros, 'rzyx')
+                    vector_rpy_msg.vector.x = roll
+                    vector_rpy_msg.vector.y = pitch
+                    vector_rpy_msg.vector.z = yaw
                     publisher_vector_rpy.publish(vector_rpy_msg)
 
 
@@ -217,10 +228,10 @@ def imu_driver():
             ##############################################################################################################
             if publish_topic_imu_pose:
                 if imu_data["fusionQPoseValid"]:
-                    pose_msg.pose.orientation.w = imu_data["fusionQPose"][0]
-                    pose_msg.pose.orientation.x = imu_data["fusionQPose"][1]
-                    pose_msg.pose.orientation.y = imu_data["fusionQPose"][2]
-                    pose_msg.pose.orientation.z = imu_data["fusionQPose"][3]
+                    pose_msg.pose.orientation.w = imu_quaternion_qw_ros
+                    pose_msg.pose.orientation.x = imu_quaternion_qx_ros
+                    pose_msg.pose.orientation.y = imu_quaternion_qy_ros
+                    pose_msg.pose.orientation.z = imu_quaternion_qz_ros
                     publisher_pose.publish(pose_msg)
 
 
@@ -229,10 +240,10 @@ def imu_driver():
             ##############################################################################################################
             if publish_topic_imu_pose_with_covariance:
                 if imu_data["fusionQPoseValid"]:
-                    pose_with_covariance_msg.pose.pose.orientation.w = imu_data["fusionQPose"][0]
-                    pose_with_covariance_msg.pose.pose.orientation.x = imu_data["fusionQPose"][1]
-                    pose_with_covariance_msg.pose.pose.orientation.y = imu_data["fusionQPose"][2]
-                    pose_with_covariance_msg.pose.pose.orientation.z = imu_data["fusionQPose"][3]
+                    pose_with_covariance_msg.pose.pose.orientation.w = imu_quaternion_qw_ros
+                    pose_with_covariance_msg.pose.pose.orientation.x = imu_quaternion_qx_ros
+                    pose_with_covariance_msg.pose.pose.orientation.y = imu_quaternion_qy_ros
+                    pose_with_covariance_msg.pose.pose.orientation.z = imu_quaternion_qz_ros
                     publisher_pose_with_covariance.publish(pose_with_covariance_msg)
 
 
@@ -241,10 +252,10 @@ def imu_driver():
             ##############################################################################################################
             if publish_topic_imu:
                 if imu_data["fusionQPoseValid"] and imu_data["gyroValid"] and imu_data["accelValid"]:
-                    imu_msg.orientation.w = imu_data["fusionQPose"][0]
-                    imu_msg.orientation.x = imu_data["fusionQPose"][1]
-                    imu_msg.orientation.y = imu_data["fusionQPose"][2]
-                    imu_msg.orientation.z = imu_data["fusionQPose"][3]
+                    imu_msg.orientation.w = imu_quaternion_qw_ros
+                    imu_msg.orientation.x = imu_quaternion_qx_ros
+                    imu_msg.orientation.y = imu_quaternion_qy_ros
+                    imu_msg.orientation.z = imu_quaternion_qz_ros
                     # gyro data in radians/sec
                     imu_msg.angular_velocity.x = imu_data["gyro"][0]
                     imu_msg.angular_velocity.y = imu_data["gyro"][1]
