@@ -33,14 +33,21 @@ def imu_driver():
     settings_folder = rospy.get_param('~settings_folder', rospack.get_path('rt_imu_lib_driver') + '/scripts') # .ini configuration folder
     settings_filename = rospy.get_param('~settings_filename', 'RTIMULib') # .ini configuration file name
     msgs_frame_id = rospy.get_param('~msgs_frame_id', 'imu_link')
-    publish_topic_imu_vector_rpy = rospy.get_param('~publish_topic_imu_vector_rpy', 'imu/vector_rpy') # if empty no message will be published
-    publish_topic_imu_pose = rospy.get_param('~publish_topic_imu_pose', 'imu/pose') # if empty no message will be published
-    publish_topic_imu_pose_with_covariance = rospy.get_param('~publish_topic_imu_pose_with_covariance', 'imu/pose_with_covariance') # if empty no message will be published
-    publish_topic_imu = rospy.get_param('~publish_topic_imu', 'imu/imu') # if empty no message will be published
-    publish_topic_magnetic_field = rospy.get_param('~publish_topic_magnetic_field', "imu/magnetic_field") # if empty no message will be published
-    publish_topic_pressure = rospy.get_param('~publish_topic_pressure', "imu/pressure") # if empty no message will be published
-    publish_topic_temperature = rospy.get_param('~publish_topic_temperature', "imu/temperature") # if empty no message will be published
-    publish_topic_humidity = rospy.get_param('~publish_topic_humidity', "imu/humidity") # if empty no message will be published
+    msgs_frame_id_ned = rospy.get_param('~msgs_frame_id_ned', 'imu_ned_link') # rosrun tf static_transform_publisher 0 0 0 1.57079632679 0 3.14159265359 imu_ned_link imu_link 10
+    use_gyro = rospy.get_param('~use_gyro', True)
+    use_accelerometer = rospy.get_param('~use_accelerometer', True)
+    use_compass = rospy.get_param('~use_compass', True)
+    publish_topics_namespace =rospy.get_param('~publish_topics_namespace', 'imu')
+    publish_topic_imu_vector_rpy = rospy.get_param('~publish_topic_imu_vector_rpy', publish_topics_namespace + '/vector_rpy') # if empty no message will be published | enu -> east-north-up
+    publish_topic_imu_vector_rpy_ned = rospy.get_param('~publish_topic_imu_vector_rpy_ned', publish_topics_namespace + '/vector_rpy_ned') # if empty no message will be published | ned -> north-east-down
+    publish_topic_imu_pose = rospy.get_param('~publish_topic_imu_pose', publish_topics_namespace + '/pose') # if empty no message will be published
+    publish_topic_imu_pose_ned = rospy.get_param('~publish_topic_imu_pose_ned', publish_topics_namespace + '/pose_ned') # if empty no message will be published
+    publish_topic_imu_pose_with_covariance = rospy.get_param('~publish_topic_imu_pose_with_covariance', publish_topics_namespace + '/pose_with_covariance') # if empty no message will be published
+    publish_topic_imu = rospy.get_param('~publish_topic_imu', publish_topics_namespace + '/imu') # if empty no message will be published
+    publish_topic_magnetic_field = rospy.get_param('~publish_topic_magnetic_field', publish_topics_namespace + '/magnetic_field') # if empty no message will be published
+    publish_topic_pressure = rospy.get_param('~publish_topic_pressure', publish_topics_namespace + '/pressure') # if empty no message will be published
+    publish_topic_temperature = rospy.get_param('~publish_topic_temperature', publish_topics_namespace + '/temperature') # if empty no message will be published
+    publish_topic_humidity = rospy.get_param('~publish_topic_humidity', publish_topics_namespace + '/humidity') # if empty no message will be published
     imu_orientation_covariance = rospy.get_param('~imu_orientation_covariance', 0.0005)
     imu_angular_velocity_covariance = rospy.get_param('~imu_angular_velocity_covariance', 0.001)
     imu_linear_acceleration_covariance = rospy.get_param('~imu_linear_acceleration_covariance', 0.0005)
@@ -56,7 +63,9 @@ def imu_driver():
     # published topics
     ##############################################################################################################
     publisher_vector_rpy = rospy.Publisher(publish_topic_imu_vector_rpy, Vector3Stamped, queue_size=10)
+    publisher_vector_rpy_ned = rospy.Publisher(publish_topic_imu_vector_rpy_ned, Vector3Stamped, queue_size=10)
     publisher_pose = rospy.Publisher(publish_topic_imu_pose, PoseStamped, queue_size=10)
+    publisher_pose_ned = rospy.Publisher(publish_topic_imu_pose_ned, PoseStamped, queue_size=10)
     publisher_pose_with_covariance = rospy.Publisher(publish_topic_imu_pose_with_covariance, PoseWithCovarianceStamped, queue_size=10)
     publisher_imu = rospy.Publisher(publish_topic_imu, Imu, queue_size=10)
     publisher_magnetic_field = rospy.Publisher(publish_topic_magnetic_field, MagneticField, queue_size=10)
@@ -85,9 +94,9 @@ def imu_driver():
     else:
         rospy.logdebug("IMU initialization successful")
 
-    imu_driver.setGyroEnable(True)
-    imu_driver.setAccelEnable(True)
-    imu_driver.setCompassEnable(True)
+    imu_driver.setGyroEnable(use_gyro)
+    imu_driver.setAccelEnable(use_accelerometer)
+    imu_driver.setCompassEnable(use_compass)
 
     poll_interval = imu_driver.IMUGetPollInterval()
     rate = 1000 / poll_interval
@@ -101,9 +110,17 @@ def imu_driver():
         vector_rpy_msg = Vector3Stamped()
         vector_rpy_msg.header.frame_id = msgs_frame_id
     
+    if publish_topic_imu_vector_rpy_ned:
+        vector_rpy_ned_msg = Vector3Stamped()
+        vector_rpy_ned_msg.header.frame_id = msgs_frame_id_ned
+    
     if publish_topic_imu_pose:
         pose_msg = PoseStamped()
         pose_msg.header.frame_id = msgs_frame_id
+    
+    if publish_topic_imu_pose_ned:
+        pose_ned_msg = PoseStamped()
+        pose_ned_msg.header.frame_id = msgs_frame_id_ned
     
     if publish_topic_imu_pose_with_covariance:
         pose_with_covariance_msg = PoseWithCovarianceStamped()
@@ -151,7 +168,7 @@ def imu_driver():
         humidity_msg.variance = humidity_variance
 
     # North-East-Down to East-North-Up
-    rt_imu_lib_to_ros_coordinate_frames_matrix = transformations.euler_matrix(1.5707, 0.0, 3.1415, 'rzyx')
+    rt_imu_lib_to_ros_coordinate_frames_matrix = transformations.euler_matrix(1.57079632679, 0.0, 3.14159265359, 'rzyx')
 
     ##############################################################################################################
     # imu msg publishing
@@ -171,8 +188,12 @@ def imu_driver():
                 trimulib_time = rospy.Time(imu_data["timestamp"] / 1e6)
                 if publish_topic_imu_vector_rpy:
                     vector_rpy_msg.header.stamp = trimulib_time
+                if publish_topic_imu_vector_rpy_ned:
+                    vector_rpy_ned_msg.header.stamp = trimulib_time
                 if publish_topic_imu_pose:
                     pose_msg.header.stamp = trimulib_time
+                if publish_topic_imu_pose_ned:
+                    pose_ned_msg.header.stamp = trimulib_time
                 if publish_topic_imu_pose_with_covariance:
                     pose_with_covariance_msg.header.stamp = trimulib_time
                 if publish_topic_imu:
@@ -188,8 +209,12 @@ def imu_driver():
             else:
                 if publish_topic_imu_vector_rpy:
                     vector_rpy_msg.header.stamp = current_time
+                if publish_topic_imu_vector_rpy_ned:
+                    vector_rpy_ned_msg.header.stamp = current_time
                 if publish_topic_imu_pose:
                     pose_msg.header.stamp = current_time
+                if publish_topic_imu_pose_ned:
+                    pose_ned_msg.header.stamp = current_time
                 if publish_topic_imu_pose_with_covariance:
                     pose_with_covariance_msg.header.stamp = current_time
                 if publish_topic_imu:
@@ -207,20 +232,28 @@ def imu_driver():
             ##############################################################################################################
             # Conversion between NED (North-East-Down) to ROS coordinate frame Front-Left-Up
             ##############################################################################################################
-            imu_fusion_q_pose_matrix = transformations.quaternion_matrix([imu_data["fusionQPose"][1], imu_data["fusionQPose"][2], imu_data["fusionQPose"][3], imu_data["fusionQPose"][0]])
-            imu_rotation_ros = transformations.concatenate_matrices(rt_imu_lib_to_ros_coordinate_frames_matrix, imu_fusion_q_pose_matrix)
-            imu_quaternion_qx_ros, imu_quaternion_qy_ros, imu_quaternion_qz_ros, imu_quaternion_qw_ros = transformations.quaternion_from_matrix(imu_rotation_ros)
+            if imu_data["fusionQPoseValid"]:
+                imu_fusion_q_pose_matrix = transformations.quaternion_matrix([imu_data["fusionQPose"][1], imu_data["fusionQPose"][2], imu_data["fusionQPose"][3], imu_data["fusionQPose"][0]])
+                imu_rotation_ros = transformations.concatenate_matrices(rt_imu_lib_to_ros_coordinate_frames_matrix, imu_fusion_q_pose_matrix)
+                imu_quaternion_qx_ros, imu_quaternion_qy_ros, imu_quaternion_qz_ros, imu_quaternion_qw_ros = transformations.quaternion_from_matrix(imu_rotation_ros)
 
             ##############################################################################################################
             # vector_rpy msg
             ##############################################################################################################
             if publish_topic_imu_vector_rpy:
-                if imu_data["fusionPoseValid"]:
+                if imu_data["fusionQPoseValid"]:
                     yaw, pitch, roll = transformations.euler_from_matrix(imu_rotation_ros, 'rzyx')
                     vector_rpy_msg.vector.x = roll
                     vector_rpy_msg.vector.y = pitch
                     vector_rpy_msg.vector.z = yaw
                     publisher_vector_rpy.publish(vector_rpy_msg)
+
+            if publish_topic_imu_vector_rpy_ned:
+                if imu_data["fusionPoseValid"]:
+                    vector_rpy_ned_msg.vector.x = imu_data["fusionPose"][0]
+                    vector_rpy_ned_msg.vector.y = imu_data["fusionPose"][1]
+                    vector_rpy_ned_msg.vector.z = imu_data["fusionPose"][2]
+                    publisher_vector_rpy_ned.publish(vector_rpy_ned_msg)
 
 
             ##############################################################################################################
@@ -234,6 +267,13 @@ def imu_driver():
                     pose_msg.pose.orientation.z = imu_quaternion_qz_ros
                     publisher_pose.publish(pose_msg)
 
+            if publish_topic_imu_pose_ned:
+                if imu_data["fusionQPoseValid"]:
+                    pose_ned_msg.pose.orientation.w = imu_data["fusionQPose"][0]
+                    pose_ned_msg.pose.orientation.x = imu_data["fusionQPose"][1]
+                    pose_ned_msg.pose.orientation.y = imu_data["fusionQPose"][2]
+                    pose_ned_msg.pose.orientation.z = imu_data["fusionQPose"][3]
+                    publisher_pose_ned.publish(pose_ned_msg)
 
             ##############################################################################################################
             # pose with covariance msg
