@@ -301,9 +301,9 @@ def imu_driver():
                     imu_msg.angular_velocity.y = imu_data["gyro"][1]
                     imu_msg.angular_velocity.z = imu_data["gyro"][2]
                     # accel data in gs
-                    imu_msg.linear_acceleration.x = imu_data["accel"][0] * gravity_acceleration # in m/s^2
-                    imu_msg.linear_acceleration.y = imu_data["accel"][1] * gravity_acceleration # in m/s^2
-                    imu_msg.linear_acceleration.z = imu_data["accel"][2] * gravity_acceleration # in m/s^2
+                    imu_msg.linear_acceleration.x = -imu_data["accel"][0] * gravity_acceleration # in m/s^2
+                    imu_msg.linear_acceleration.y = -imu_data["accel"][1] * gravity_acceleration # in m/s^2
+                    imu_msg.linear_acceleration.z = -imu_data["accel"][2] * gravity_acceleration # in m/s^2
                     publisher_imu.publish(imu_msg)
 
 
