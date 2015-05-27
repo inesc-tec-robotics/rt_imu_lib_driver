@@ -33,10 +33,10 @@ def imu_driver():
     settings_folder = rospy.get_param('~settings_folder', rospack.get_path('rt_imu_lib_driver') + '/scripts') # .ini configuration folder
     settings_filename = rospy.get_param('~settings_filename', 'RTIMULib') # .ini configuration file name
     msgs_frame_id = rospy.get_param('~msgs_frame_id', 'imu_link')
-    msgs_frame_id_ned = rospy.get_param('~msgs_frame_id_ned', 'imu_ned_link') # rosrun tf static_transform_publisher 0 0 0 1.57079632679 0 3.14159265359 imu_ned_link imu_link 10
-    use_gyro = rospy.get_param('~use_gyro', True)
-    use_accelerometer = rospy.get_param('~use_accelerometer', True)
-    use_compass = rospy.get_param('~use_compass', True)
+    msgs_frame_id_ned = rospy.get_param('~msgs_frame_id_ned', 'imu_ned_link') # rosrun tf static_transform_publisher 0 0 0 0.0 0 3.14159265359 imu_ned_link imu_link 10
+    orientation_fusion_use_gyro = rospy.get_param('~orientation_fusion_use_gyro', True)
+    orientation_fusion_use_accelerometer = rospy.get_param('~orientation_fusion_use_accelerometer', True)
+    orientation_fusion_use_compass = rospy.get_param('~orientation_fusion_use_compass', True)
     publish_topics_namespace =rospy.get_param('~publish_topics_namespace', 'imu')
     publish_topic_imu_vector_rpy = rospy.get_param('~publish_topic_imu_vector_rpy', publish_topics_namespace + '/vector_rpy') # if empty no message will be published | enu -> east-north-up
     publish_topic_imu_vector_rpy_ned = rospy.get_param('~publish_topic_imu_vector_rpy_ned', publish_topics_namespace + '/vector_rpy_ned') # if empty no message will be published | ned -> north-east-down
@@ -94,9 +94,9 @@ def imu_driver():
     else:
         rospy.logdebug("IMU initialization successful")
 
-    imu_driver.setGyroEnable(use_gyro)
-    imu_driver.setAccelEnable(use_accelerometer)
-    imu_driver.setCompassEnable(use_compass)
+    imu_driver.setGyroEnable(orientation_fusion_use_gyro)
+    imu_driver.setAccelEnable(orientation_fusion_use_accelerometer)
+    imu_driver.setCompassEnable(orientation_fusion_use_compass)
 
     poll_interval = imu_driver.IMUGetPollInterval()
     rate = 1000 / poll_interval
@@ -167,8 +167,6 @@ def imu_driver():
         humidity_msg.header.frame_id = msgs_frame_id
         humidity_msg.variance = humidity_variance
 
-    # North-East-Down to East-North-Up
-    rt_imu_lib_to_ros_coordinate_frames_matrix = transformations.euler_matrix(1.57079632679, 0.0, 3.14159265359, 'rzyx')
 
     ##############################################################################################################
     # imu msg publishing
@@ -179,8 +177,11 @@ def imu_driver():
             current_time = rospy.Time.now()
             imu_data = imu_driver.getIMUData()
             rospy.logdebug("Time stamp -> Driver: %f | ROS: %f", imu_data["timestamp"] / 1e6, current_time.to_sec())
-            
-            
+            time_difference_rtimulib_vs_ros = abs(imu_data["timestamp"] / 1e6 - current_time.to_sec())
+            if time_difference_rtimulib_vs_ros > 0.2:
+                rospy.logwarn("High time difference (%s sec) between RTIMULib and rospy.Time.now()", time_difference_rtimulib_vs_ros)
+
+
             ##############################################################################################################
             # msg headers time
             ##############################################################################################################
@@ -233,15 +234,18 @@ def imu_driver():
             # Conversion between NED (North-East-Down) to ROS coordinate frame Front-Left-Up
             ##############################################################################################################
             if imu_data["fusionQPoseValid"]:
-                imu_fusion_q_pose_matrix = transformations.quaternion_matrix([imu_data["fusionQPose"][1], imu_data["fusionQPose"][2], imu_data["fusionQPose"][3], imu_data["fusionQPose"][0]])
-                imu_rotation_ros = transformations.concatenate_matrices(rt_imu_lib_to_ros_coordinate_frames_matrix, imu_fusion_q_pose_matrix)
-                imu_quaternion_qx_ros, imu_quaternion_qy_ros, imu_quaternion_qz_ros, imu_quaternion_qw_ros = transformations.quaternion_from_matrix(imu_rotation_ros)
+                imu_quaternion_qw_ros = imu_data["fusionQPose"][0]
+                imu_quaternion_qx_ros = imu_data["fusionQPose"][1]
+                imu_quaternion_qy_ros = -imu_data["fusionQPose"][2]
+                imu_quaternion_qz_ros = -imu_data["fusionQPose"][3]
+
 
             ##############################################################################################################
             # vector_rpy msg
             ##############################################################################################################
             if publish_topic_imu_vector_rpy:
                 if imu_data["fusionQPoseValid"]:
+                    imu_rotation_ros = transformations.quaternion_matrix([imu_quaternion_qx_ros, imu_quaternion_qy_ros, imu_quaternion_qz_ros, imu_quaternion_qw_ros])
                     yaw, pitch, roll = transformations.euler_from_matrix(imu_rotation_ros, 'rzyx')
                     vector_rpy_msg.vector.x = roll
                     vector_rpy_msg.vector.y = pitch
@@ -298,12 +302,12 @@ def imu_driver():
                     imu_msg.orientation.z = imu_quaternion_qz_ros
                     # gyro data in radians/sec
                     imu_msg.angular_velocity.x = imu_data["gyro"][0]
-                    imu_msg.angular_velocity.y = imu_data["gyro"][1]
-                    imu_msg.angular_velocity.z = imu_data["gyro"][2]
+                    imu_msg.angular_velocity.y = -imu_data["gyro"][1]
+                    imu_msg.angular_velocity.z = -imu_data["gyro"][2]
                     # accel data in gs
                     imu_msg.linear_acceleration.x = -imu_data["accel"][0] * gravity_acceleration # in m/s^2
-                    imu_msg.linear_acceleration.y = -imu_data["accel"][1] * gravity_acceleration # in m/s^2
-                    imu_msg.linear_acceleration.z = -imu_data["accel"][2] * gravity_acceleration # in m/s^2
+                    imu_msg.linear_acceleration.y = imu_data["accel"][1] * gravity_acceleration # in m/s^2
+                    imu_msg.linear_acceleration.z = imu_data["accel"][2] * gravity_acceleration # in m/s^2
                     publisher_imu.publish(imu_msg)
 
 
