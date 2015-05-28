@@ -57,7 +57,7 @@ def imu_driver():
     humidity_variance = rospy.get_param('~humidity_variance', 0.0)
     gravity_acceleration = rospy.get_param('~gravity_acceleration', 9.80665)
     msg_header_use_trimulib_time = rospy.get_param('~msg_header_use_trimulib_time', True) # False uses rospy.Time.now()
-
+    msg_header_use_trimulib_time_ned = rospy.get_param('~msg_header_use_trimulib_time_ned', True) # False uses rospy.Time.now()
 
     ##############################################################################################################
     # published topics
@@ -185,16 +185,12 @@ def imu_driver():
             ##############################################################################################################
             # msg headers time
             ##############################################################################################################
+            trimulib_time = rospy.Time(imu_data["timestamp"] / 1e6)
             if msg_header_use_trimulib_time:
-                trimulib_time = rospy.Time(imu_data["timestamp"] / 1e6)
                 if publish_topic_imu_vector_rpy:
                     vector_rpy_msg.header.stamp = trimulib_time
-                if publish_topic_imu_vector_rpy_ned:
-                    vector_rpy_ned_msg.header.stamp = trimulib_time
                 if publish_topic_imu_pose:
                     pose_msg.header.stamp = trimulib_time
-                if publish_topic_imu_pose_ned:
-                    pose_ned_msg.header.stamp = trimulib_time
                 if publish_topic_imu_pose_with_covariance:
                     pose_with_covariance_msg.header.stamp = trimulib_time
                 if publish_topic_imu:
@@ -210,12 +206,8 @@ def imu_driver():
             else:
                 if publish_topic_imu_vector_rpy:
                     vector_rpy_msg.header.stamp = current_time
-                if publish_topic_imu_vector_rpy_ned:
-                    vector_rpy_ned_msg.header.stamp = current_time
                 if publish_topic_imu_pose:
                     pose_msg.header.stamp = current_time
-                if publish_topic_imu_pose_ned:
-                    pose_ned_msg.header.stamp = current_time
                 if publish_topic_imu_pose_with_covariance:
                     pose_with_covariance_msg.header.stamp = current_time
                 if publish_topic_imu:
@@ -228,6 +220,17 @@ def imu_driver():
                     temperature_msg.header.stamp = current_time
                 if publish_topic_humidity:
                     humidity_msg.header.stamp = current_time
+
+            if msg_header_use_trimulib_time_ned:
+                if publish_topic_imu_vector_rpy_ned:
+                    vector_rpy_ned_msg.header.stamp = trimulib_time
+                if publish_topic_imu_pose_ned:
+                    pose_ned_msg.header.stamp = trimulib_time
+            else:
+                if publish_topic_imu_vector_rpy_ned:
+                    vector_rpy_ned_msg.header.stamp = current_time
+                if publish_topic_imu_pose_ned:
+                    pose_ned_msg.header.stamp = current_time
 
 
             ##############################################################################################################
