@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 install_dependencies=${1:-true}
 clone_git_repository=${2:-true}
